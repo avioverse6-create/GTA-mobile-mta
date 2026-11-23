@@ -298,7 +298,7 @@ func _fire_deagle() -> void:
 	if not hit.is_empty():
 		var target: Object = hit.get("collider")
 		if target is Node and target.is_in_group("pedestrians"):
-			var defeated: bool = target.take_damage(34.0)
+			var defeated: bool = bool(target.call("take_damage", 34.0))
 			combat_message.text = "TARGET DOWN" if defeated else "HIT!"
 		else:
 			combat_message.text = "SHOT"
