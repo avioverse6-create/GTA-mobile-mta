@@ -61,6 +61,7 @@ func _ready() -> void:
 	_build_world()
 	_spawn_player_car()
 	_spawn_player_character()
+	_spawn_pedestrians()
 	_build_camera()
 	_build_hud()
 
@@ -224,6 +225,25 @@ func _spawn_player_character() -> void:
 	add_child(player)
 	player.visible = false
 	player.set_physics_process(false)
+
+func _spawn_pedestrians() -> void:
+	var outfits := [
+		Color(0.72, 0.18, 0.12),
+		Color(0.12, 0.42, 0.28),
+		Color(0.72, 0.58, 0.16),
+		Color(0.28, 0.24, 0.62),
+		Color(0.62, 0.28, 0.48),
+		Color(0.18, 0.48, 0.58)
+	]
+	for i in range(8):
+		var pedestrian := CharacterBody3D.new()
+		pedestrian.name = "Pedestrian_%02d" % i
+		pedestrian.set_script(load("res://scripts/pedestrian.gd"))
+		pedestrian.set("body_color", outfits[i % outfits.size()])
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var lane_z := -27.0 + float(i) * 7.5
+		pedestrian.position = Vector3(side * 8.2, 0.12, lane_z)
+		add_child(pedestrian)
 
 func _process_interaction() -> void:
 	if in_vehicle:
