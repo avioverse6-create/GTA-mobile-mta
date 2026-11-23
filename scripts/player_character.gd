@@ -1,6 +1,8 @@
 extends CharacterBody3D
 
 @export var move_speed := 5.5
+@export var sprint_speed := 8.5
+@export var jump_velocity := 7.0
 @export var acceleration := 18.0
 @export var turn_speed := 9.0
 
@@ -15,9 +17,13 @@ func _physics_process(delta: float) -> void:
 	var direction := Vector3(input_vector.x, 0.0, input_vector.y)
 	if direction.length() > 1.0:
 		direction = direction.normalized()
-	velocity.x = move_toward(velocity.x, direction.x * move_speed, acceleration * delta)
-	velocity.z = move_toward(velocity.z, direction.z * move_speed, acceleration * delta)
-	velocity.y -= 24.0 * delta
+	var current_speed := sprint_speed if Input.is_action_pressed("sprint") else move_speed
+	velocity.x = move_toward(velocity.x, direction.x * current_speed, acceleration * delta)
+	velocity.z = move_toward(velocity.z, direction.z * current_speed, acceleration * delta)
+	if is_on_floor() and Input.is_action_just_pressed("jump"):
+		velocity.y = jump_velocity
+	else:
+		velocity.y -= 24.0 * delta
 	if direction.length() > 0.12:
 		var desired_yaw := atan2(-direction.x, -direction.z)
 		rotation.y = lerp_angle(rotation.y, desired_yaw, 1.0 - exp(-turn_speed * delta))
