@@ -1,7 +1,7 @@
 extends CharacterBody3D
 
 @export var walk_speed := 1.6
-@export var wander_radius := 1.5
+@export var wander_radius := 1.2
 
 var home_position := Vector3.ZERO
 var destination := Vector3.ZERO
@@ -65,7 +65,7 @@ func _physics_process(delta: float) -> void:
 
 func _choose_destination() -> void:
 	var angle := randf() * TAU
-	var distance := randf_range(2.0, wander_radius)
+	var distance := randf_range(0.4, wander_radius)
 	destination = home_position + Vector3(cos(angle) * distance, 0.0, sin(angle) * distance)
 	choose_timer = randf_range(3.0, 7.0)
 
