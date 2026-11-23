@@ -5,7 +5,8 @@ A Godot 4 mobile-first prototype for an original GTA-style open-world driving ga
 ## Current build
 - A 3D blue sports car spawns immediately when the game starts.
 - Procedurally built car body, dark windows, alloy wheels, headlights and rear spoiler.
-- Follow camera, road, lane markings, simple city blocks, sky and sunlight.
+- Follow camera, road, lane markings, sidewalks, a denser city avenue, facade windows, streetlights, sky and sunlight.
+- GTA-inspired HUD prototype with cash display, health and armor bars, and a stylized radar panel.
 - Driving controls: W/A/S/D or arrow keys; Space/S to brake or reverse.
 - On-screen touch controls for steering, gas and brake.
 - Mobile renderer selected in project settings.
@@ -23,6 +24,6 @@ The prototype currently uses procedural original geometry and materials. It does
 
 ## Next milestones
 - Replace prototype geometry with properly licensed or user-provided assets.
-- Expand the city and add pedestrians, traffic and missions.
+- Make the radar track the world and add pedestrians, traffic and missions.
 - Improve vehicle physics, touch layout and Android performance.
 - Set up a reproducible Android APK build.
