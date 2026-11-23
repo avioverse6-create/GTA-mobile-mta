@@ -102,8 +102,8 @@ func _build_person() -> void:
 	_add_box(right_leg, "Leg", Vector3(0.2, 0.55, 0.23), Vector3(0, -0.16, 0), pants)
 	_add_box(left_leg, "Shoe", Vector3(0.22, 0.12, 0.32), Vector3(0, -0.44, -0.05), shoes)
 	_add_box(right_leg, "Shoe", Vector3(0.22, 0.12, 0.32), Vector3(0, -0.44, -0.05), shoes)
-	_add_capsule(left_arm, "Arm", 0.11, 0.62, Vector3(0, -0.24, 0), skin)
-	_add_capsule(right_arm, "Arm", 0.11, 0.62, Vector3(0, -0.24, 0), skin)
+	_add_capsule_to(left_arm, "Arm", 0.11, 0.62, Vector3(0, -0.24, 0), skin)
+	_add_capsule_to(right_arm, "Arm", 0.11, 0.62, Vector3(0, -0.24, 0), skin)
 	var collision := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.34
@@ -128,6 +128,17 @@ func _add_capsule(label: String, radius: float, height: float, pos: Vector3, mat
 	node.material_override = material
 	node.position = pos
 	add_child(node)
+
+func _add_capsule_to(parent: Node3D, label: String, radius: float, height: float, pos: Vector3, material: Material) -> void:
+	var node := MeshInstance3D.new()
+	node.name = label
+	var mesh := CapsuleMesh.new()
+	mesh.radius = radius
+	mesh.height = height
+	node.mesh = mesh
+	node.material_override = material
+	node.position = pos
+	parent.add_child(node)
 
 func _add_box(parent: Node3D, label: String, box_size: Vector3, pos: Vector3, material: Material) -> void:
 	var node := MeshInstance3D.new()
