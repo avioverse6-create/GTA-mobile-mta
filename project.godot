@@ -1,0 +1,18 @@
+; Engine configuration file.
+; GTA Mobile prototype - Godot 4.x
+config_version=5
+
+[application]
+config/name="GTA Mobile - Open World Prototype"
+run/main_scene="res://scenes/main.tscn"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/handheld/orientation=0
+
+[rendering]
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.42, 0.68, 0.88, 1)
