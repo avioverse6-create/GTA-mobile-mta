@@ -8,7 +8,8 @@ A Godot 4 mobile-first prototype for an original GTA-style open-world driving ga
 - Follow camera, road, lane markings, sidewalks, a denser city avenue, facade windows, streetlights, sky and sunlight.
 - GTA-inspired HUD prototype with cash display, health and armor bars, and a stylized radar panel.
 - Driving controls: W/A/S/D or arrow keys; Space/S to brake or reverse.
-- On-screen touch controls for steering, gas and brake.
+- On-screen touch controls for steering, gas, brake and enter/exit.
+- Third-person character prototype; press E or ENTER / EXIT to leave or re-enter the parked car. Walk with WASD / arrow keys.
 - Mobile renderer selected in project settings.
 
 ## Open in Godot
