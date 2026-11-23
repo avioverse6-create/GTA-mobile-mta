@@ -3,27 +3,41 @@ extends Node3D
 var car
 var camera: Camera3D
 var speed_label: Label
+var player: CharacterBody3D
+var in_vehicle := true
 
 func _ready() -> void:
 	_setup_input()
 	_build_world()
 	_spawn_player_car()
+	_spawn_player_character()
 	_build_camera()
 	_build_hud()
 
 func _process(delta: float) -> void:
-	if car and camera:
-		var target := car.global_position + car.global_transform.basis * Vector3(0, 4.2, 9.5)
+	if Input.is_action_just_pressed("interact"):
+		_process_interaction()
+	if camera:
+		var followed: Node3D = car if in_vehicle else player
+		var target: Vector3
+		if in_vehicle:
+			target = car.global_position + car.global_transform.basis * Vector3(0, 4.2, 9.5)
+		else:
+			target = player.global_position + Vector3(0, 3.4, 6.2)
 		camera.global_position = camera.global_position.lerp(target, 1.0 - exp(-4.5 * delta))
-		camera.look_at(car.global_position + Vector3(0, 0.8, 0), Vector3.UP)
-	if speed_label and car:
-		speed_label.text = "%03d KM/H" % int(absf(car.speed) * 3.6)
+		camera.look_at(followed.global_position + Vector3(0, 1.0, 0), Vector3.UP)
+	if speed_label:
+		if in_vehicle:
+			speed_label.text = "%03d KM/H" % int(absf(car.speed) * 3.6)
+		else:
+			speed_label.text = "ON FOOT"
 
 func _setup_input() -> void:
 	_add_key_action("accelerate", [KEY_W, KEY_UP])
 	_add_key_action("brake", [KEY_S, KEY_DOWN, KEY_SPACE])
 	_add_key_action("steer_left", [KEY_A, KEY_LEFT])
 	_add_key_action("steer_right", [KEY_D, KEY_RIGHT])
+	_add_key_action("interact", [KEY_E])
 
 func _add_key_action(action: String, keys: Array) -> void:
 	if not InputMap.has_action(action):
@@ -158,6 +172,34 @@ func _spawn_player_car() -> void:
 	car.position = Vector3(0, 0.2, 5)
 	add_child(car)
 
+
+func _spawn_player_character() -> void:
+	player = CharacterBody3D.new()
+	player.name = "Player"
+	player.set_script(load("res://scripts/player_character.gd"))
+	player.position = Vector3(-2.2, 0.15, 5.0)
+	add_child(player)
+	player.visible = false
+	player.set_physics_process(false)
+
+func _process_interaction() -> void:
+	if in_vehicle:
+		if absf(car.speed) > 1.0:
+			return
+		in_vehicle = false
+		car.set_physics_process(false)
+		player.global_position = car.global_position + car.global_transform.basis * Vector3(-2.0, 0.0, 0.2)
+		player.global_rotation.y = car.global_rotation.y
+		player.visible = true
+		player.set_physics_process(true)
+	else:
+		if player.global_position.distance_to(car.global_position) > 3.5 or absf(car.speed) > 1.0:
+			return
+		in_vehicle = true
+		player.visible = false
+		player.set_physics_process(false)
+		car.set_physics_process(true)
+
 func _build_camera() -> void:
 	camera = Camera3D.new()
 	camera.current = true
@@ -237,6 +279,7 @@ func _build_hud() -> void:
 	_add_touch_button(layer, "▶", Vector2(124, -122), Vector2(88, 88), "steer_right")
 	_add_touch_button(layer, "GAS", Vector2(-122, -132), Vector2(100, 100), "accelerate", true)
 	_add_touch_button(layer, "BRAKE", Vector2(-232, -108), Vector2(92, 76), "brake", true)
+	_add_touch_button(layer, "ENTER / EXIT", Vector2(-360, -84), Vector2(118, 58), "interact", true)
 
 	var hint := Label.new()
 	hint.text = "WASD / ARROWS  •  TOUCH CONTROLS"
