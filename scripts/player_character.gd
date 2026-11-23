@@ -171,8 +171,9 @@ func _add_box(parent: Node3D, label: String, box_size: Vector3, pos: Vector3, ma
 	mesh_instance.position = pos
 	parent.add_child(mesh_instance)
 
-func _mat(color: Color) -> StandardMaterial3D:
+func _mat(color: Color, metallic := 0.0, roughness := 0.82) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
-	material.roughness = 0.82
+	material.metallic = metallic
+	material.roughness = roughness
 	return material
