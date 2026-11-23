@@ -1,10 +1,60 @@
 extends Node3D
 
+class MobileJoystick extends Control:
+	signal vector_changed(value: Vector2)
+	var active_touch := -1
+	var stick_vector := Vector2.ZERO
+	var base_radius := 76.0
+	var knob_radius := 31.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		queue_redraw()
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventScreenTouch:
+			if event.pressed and active_touch == -1:
+				active_touch = event.index
+				_update_stick(event.position)
+				accept_event()
+			elif not event.pressed and event.index == active_touch:
+				active_touch = -1
+				stick_vector = Vector2.ZERO
+				vector_changed.emit(stick_vector)
+				queue_redraw()
+				accept_event()
+		elif event is InputEventScreenDrag and event.index == active_touch:
+			_update_stick(event.position)
+			accept_event()
+
+	func _update_stick(touch_position: Vector2) -> void:
+		var offset := touch_position - size * 0.5
+		if offset.length() > base_radius:
+			offset = offset.normalized() * base_radius
+		stick_vector = Vector2(offset.x / base_radius, offset.y / base_radius)
+		if stick_vector.length() < 0.12:
+			stick_vector = Vector2.ZERO
+		vector_changed.emit(stick_vector)
+		queue_redraw()
+
+	func _draw() -> void:
+		var center := size * 0.5
+		draw_circle(center, base_radius, Color(0.02, 0.035, 0.055, 0.48))
+		draw_arc(center, base_radius, 0.0, TAU, 64, Color(0.8, 0.88, 1.0, 0.55), 3.0)
+		var knob_center := center + stick_vector * base_radius
+		draw_circle(knob_center, knob_radius, Color(0.72, 0.84, 1.0, 0.82))
+		draw_arc(knob_center, knob_radius, 0.0, TAU, 48, Color(1, 1, 1, 0.8), 2.0)
+
 var car
 var camera: Camera3D
 var speed_label: Label
 var player: CharacterBody3D
 var in_vehicle := true
+var joystick: MobileJoystick
+var camera_yaw := 0.0
+var camera_pitch := 0.28
+var camera_distance := 9.5
+var camera_drag_sensitivity := 0.006
 
 func _ready() -> void:
 	_setup_input()
@@ -19,18 +69,19 @@ func _process(delta: float) -> void:
 		_process_interaction()
 	if camera:
 		var followed: Node3D = car if in_vehicle else player
-		var target: Vector3
-		if in_vehicle:
-			target = car.global_position + car.global_transform.basis * Vector3(0, 4.2, 9.5)
-		else:
-			target = player.global_position + Vector3(0, 3.4, 6.2)
-		camera.global_position = camera.global_position.lerp(target, 1.0 - exp(-4.5 * delta))
-		camera.look_at(followed.global_position + Vector3(0, 1.0, 0), Vector3.UP)
+		var target := followed.global_position + Vector3(0, 1.0, 0)
+		var horizontal_distance := camera_distance * cos(camera_pitch)
+		var camera_offset := Vector3(sin(camera_yaw) * horizontal_distance, camera_distance * sin(camera_pitch), cos(camera_yaw) * horizontal_distance)
+		var desired_position := target + camera_offset
+		camera.global_position = camera.global_position.lerp(desired_position, 1.0 - exp(-5.0 * delta))
+		camera.look_at(target, Vector3.UP)
 	if speed_label:
-		if in_vehicle:
-			speed_label.text = "%03d KM/H" % int(absf(car.speed) * 3.6)
-		else:
-			speed_label.text = "ON FOOT"
+		speed_label.text = ("%03d KM/H" % int(absf(car.speed) * 3.6)) if in_vehicle else "ON FOOT"
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenDrag:
+		camera_yaw -= event.relative.x * camera_drag_sensitivity
+		camera_pitch = clampf(camera_pitch + event.relative.y * camera_drag_sensitivity, -0.12, 0.82)
 
 func _setup_input() -> void:
 	# Touch-only actions: deliberately create no keyboard bindings.
@@ -267,8 +318,14 @@ func _build_hud() -> void:
 	player_dot.color = Color(1.0, 0.82, 0.18)
 	radar.add_child(player_dot)
 
-	_add_touch_button(layer, "◀", Vector2(28, -122), Vector2(88, 88), "steer_left")
-	_add_touch_button(layer, "▶", Vector2(124, -122), Vector2(88, 88), "steer_right")
+	joystick = MobileJoystick.new()
+	joystick.name = "MoveJoystick"
+	joystick.anchor_top = 1.0
+	joystick.anchor_bottom = 1.0
+	joystick.position = Vector2(24, -204)
+	joystick.size = Vector2(176, 176)
+	joystick.vector_changed.connect(_on_joystick_changed)
+	layer.add_child(joystick)
 	_add_touch_button(layer, "GAS", Vector2(-122, -132), Vector2(100, 100), "accelerate", true)
 	_add_touch_button(layer, "BRAKE", Vector2(-232, -108), Vector2(92, 76), "brake", true)
 	_add_touch_button(layer, "ENTER / EXIT", Vector2(-360, -84), Vector2(118, 58), "interact", true)
@@ -276,7 +333,7 @@ func _build_hud() -> void:
 	_add_touch_button(layer, "RUN", Vector2(-240, -246), Vector2(88, 70), "sprint", true)
 
 	var hint := Label.new()
-	hint.text = "TOUCH CONTROLS ONLY"
+	hint.text = "LEFT: MOVE  •  DRAG: CAMERA"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 24
@@ -286,6 +343,18 @@ func _build_hud() -> void:
 	hint.add_theme_color_override("font_color", Color(0.88, 0.91, 0.95, 0.8))
 	layer.add_child(hint)
 
+
+func _on_joystick_changed(value: Vector2) -> void:
+	_set_touch_action("steer_left", maxf(-value.x, 0.0))
+	_set_touch_action("steer_right", maxf(value.x, 0.0))
+	_set_touch_action("accelerate", maxf(-value.y, 0.0))
+	_set_touch_action("brake", maxf(value.y, 0.0))
+
+func _set_touch_action(action: String, strength: float) -> void:
+	if strength > 0.01:
+		Input.action_press(action, strength)
+	else:
+		Input.action_release(action)
 
 func _add_status_bar(layer: CanvasLayer, pos: Vector2, fill_color: Color, width: float) -> void:
 	var background := ColorRect.new()
