@@ -33,19 +33,11 @@ func _process(delta: float) -> void:
 			speed_label.text = "ON FOOT"
 
 func _setup_input() -> void:
-	_add_key_action("accelerate", [KEY_W, KEY_UP])
-	_add_key_action("brake", [KEY_S, KEY_DOWN, KEY_SPACE])
-	_add_key_action("steer_left", [KEY_A, KEY_LEFT])
-	_add_key_action("steer_right", [KEY_D, KEY_RIGHT])
-	_add_key_action("interact", [KEY_E])
-
-func _add_key_action(action: String, keys: Array) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action)
-	for key in keys:
-		var event := InputEventKey.new()
-		event.physical_keycode = key
-		InputMap.action_add_event(action, event)
+	# Touch-only actions: deliberately create no keyboard bindings.
+	for action in ["accelerate", "brake", "steer_left", "steer_right", "interact", "jump", "sprint"]:
+		if not InputMap.has_action(action):
+			InputMap.add_action(action)
+		InputMap.action_erase_events(action)
 
 func _build_world() -> void:
 	var world_env := WorldEnvironment.new()
@@ -280,9 +272,11 @@ func _build_hud() -> void:
 	_add_touch_button(layer, "GAS", Vector2(-122, -132), Vector2(100, 100), "accelerate", true)
 	_add_touch_button(layer, "BRAKE", Vector2(-232, -108), Vector2(92, 76), "brake", true)
 	_add_touch_button(layer, "ENTER / EXIT", Vector2(-360, -84), Vector2(118, 58), "interact", true)
+	_add_touch_button(layer, "JUMP", Vector2(-132, -246), Vector2(96, 70), "jump", true)
+	_add_touch_button(layer, "RUN", Vector2(-240, -246), Vector2(88, 70), "sprint", true)
 
 	var hint := Label.new()
-	hint.text = "WASD / ARROWS  •  TOUCH CONTROLS"
+	hint.text = "TOUCH CONTROLS ONLY"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 24
