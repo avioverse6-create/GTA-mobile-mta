@@ -80,17 +80,7 @@ func _build_world() -> void:
 		stripe.position = Vector3(0, 0.035, z)
 		add_child(stripe)
 
-	# Simple low-poly city blocks to give the first build an open-world feel.
-	for i in range(18):
-		var side := -1.0 if i % 2 == 0 else 1.0
-		var h := 5.0 + float((i * 7) % 13)
-		var building := MeshInstance3D.new()
-		var block := BoxMesh.new()
-		block.size = Vector3(5.0, h, 5.5)
-		building.mesh = block
-		building.material_override = _material(Color(0.28 + float(i % 3) * 0.06, 0.31, 0.35 + float(i % 4) * 0.035), 0.05, 0.85)
-		building.position = Vector3(side * (11.0 + float(i % 3) * 3.0), h / 2.0 - 0.1, -48.0 + float(i) * 5.6)
-		add_child(building)
+	_build_city()
 
 	var floor_body := StaticBody3D.new()
 	var floor_collision := CollisionShape3D.new()
@@ -100,6 +90,67 @@ func _build_world() -> void:
 	floor_collision.position.y = -0.12
 	floor_body.add_child(floor_collision)
 	add_child(floor_body)
+
+
+func _build_city() -> void:
+	# Sidewalks and a denser avenue.
+	for side in [-1.0, 1.0]:
+		var sidewalk := MeshInstance3D.new()
+		var pavement := BoxMesh.new()
+		pavement.size = Vector3(2.2, 0.18, 120.0)
+		sidewalk.mesh = pavement
+		sidewalk.material_override = _material(Color(0.42, 0.43, 0.42), 0.0, 0.95)
+		sidewalk.position = Vector3(side * 7.1, 0.0, 0.0)
+		add_child(sidewalk)
+
+	for i in range(22):
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var h := 7.0 + float((i * 7) % 17)
+		var width := 5.5 + float(i % 3)
+		var depth := 5.0 + float((i + 1) % 3)
+		var x := side * (12.0 + float(i % 3) * 3.1)
+		var z := -56.0 + float(i) * 5.2
+		var building := MeshInstance3D.new()
+		var block := BoxMesh.new()
+		block.size = Vector3(width, h, depth)
+		building.mesh = block
+		building.material_override = _material(Color(0.27 + float(i % 4) * 0.045, 0.29 + float(i % 3) * 0.025, 0.32 + float(i % 4) * 0.035), 0.04, 0.88)
+		building.position = Vector3(x, h / 2.0, z)
+		add_child(building)
+
+		# Lit-looking window panels on the street-facing facade.
+		var face_z := z + depth * 0.5 + 0.035 if side < 0.0 else z - depth * 0.5 - 0.035
+		for floor_index in range(maxi(1, int(h / 2.4))):
+			for window_index in range(3):
+				var window := MeshInstance3D.new()
+				var pane := BoxMesh.new()
+				pane.size = Vector3(0.72, 0.9, 0.07)
+				window.mesh = pane
+				var glow := Color(0.72, 0.66, 0.42) if (i + floor_index + window_index) % 4 == 0 else Color(0.075, 0.16, 0.22)
+				window.material_override = _material(glow, 0.08, 0.32)
+				window.position = Vector3(x - width * 0.28 + float(window_index) * width * 0.28, 1.5 + float(floor_index) * 2.2, face_z)
+				add_child(window)
+
+	# Street lights along both curbs.
+	for z in range(-48, 53, 16):
+		for side in [-1.0, 1.0]:
+			var pole := MeshInstance3D.new()
+			var pole_mesh := CylinderMesh.new()
+			pole_mesh.top_radius = 0.055
+			pole_mesh.bottom_radius = 0.075
+			pole_mesh.height = 4.8
+			pole.mesh = pole_mesh
+			pole.material_override = _material(Color(0.12, 0.14, 0.16), 0.7, 0.35)
+			pole.position = Vector3(side * 8.0, 2.4, z)
+			add_child(pole)
+			var lamp := MeshInstance3D.new()
+			var lamp_mesh := SphereMesh.new()
+			lamp_mesh.radius = 0.22
+			lamp_mesh.height = 0.3
+			lamp.mesh = lamp_mesh
+			lamp.material_override = _material(Color(1.0, 0.82, 0.48), 0.0, 0.2)
+			lamp.position = Vector3(side * 8.0, 4.85, z)
+			add_child(lamp)
 
 func _spawn_player_car() -> void:
 	car = CharacterBody3D.new()
@@ -139,6 +190,49 @@ func _build_hud() -> void:
 	speed_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.45))
 	layer.add_child(speed_label)
 
+	# Compact GTA-inspired status panel.
+	var status := Label.new()
+	status.text = "$ 2500"
+	status.position = Vector2(26, 54)
+	status.add_theme_font_size_override("font_size", 23)
+	status.add_theme_color_override("font_color", Color(0.45, 1.0, 0.52))
+	layer.add_child(status)
+
+	var health_title := Label.new()
+	health_title.text = "HEALTH"
+	health_title.position = Vector2(26, 84)
+	health_title.add_theme_font_size_override("font_size", 12)
+	layer.add_child(health_title)
+	_add_status_bar(layer, Vector2(26, 103), Color(0.2, 0.88, 0.34), 170.0)
+
+	var armor_title := Label.new()
+	armor_title.text = "ARMOR"
+	armor_title.position = Vector2(26, 124)
+	armor_title.add_theme_font_size_override("font_size", 12)
+	layer.add_child(armor_title)
+	_add_status_bar(layer, Vector2(26, 143), Color(0.25, 0.65, 1.0), 170.0)
+
+	var radar := ColorRect.new()
+	radar.position = Vector2(26, 176)
+	radar.size = Vector2(142, 112)
+	radar.color = Color(0.025, 0.055, 0.065, 0.88)
+	layer.add_child(radar)
+	var radar_road := ColorRect.new()
+	radar_road.position = Vector2(68, 0)
+	radar_road.size = Vector2(10, 112)
+	radar_road.color = Color(0.34, 0.38, 0.38)
+	radar.add_child(radar_road)
+	var radar_cross := ColorRect.new()
+	radar_cross.position = Vector2(0, 50)
+	radar_cross.size = Vector2(142, 9)
+	radar_cross.color = Color(0.34, 0.38, 0.38)
+	radar.add_child(radar_cross)
+	var player_dot := ColorRect.new()
+	player_dot.position = Vector2(66, 49)
+	player_dot.size = Vector2(14, 14)
+	player_dot.color = Color(1.0, 0.82, 0.18)
+	radar.add_child(player_dot)
+
 	_add_touch_button(layer, "◀", Vector2(28, -122), Vector2(88, 88), "steer_left")
 	_add_touch_button(layer, "▶", Vector2(124, -122), Vector2(88, 88), "steer_right")
 	_add_touch_button(layer, "GAS", Vector2(-122, -132), Vector2(100, 100), "accelerate", true)
@@ -154,6 +248,19 @@ func _build_hud() -> void:
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.88, 0.91, 0.95, 0.8))
 	layer.add_child(hint)
+
+
+func _add_status_bar(layer: CanvasLayer, pos: Vector2, fill_color: Color, width: float) -> void:
+	var background := ColorRect.new()
+	background.position = pos
+	background.size = Vector2(width, 10)
+	background.color = Color(0.04, 0.05, 0.06, 0.88)
+	layer.add_child(background)
+	var fill := ColorRect.new()
+	fill.position = Vector2(2, 2)
+	fill.size = Vector2(width - 4, 6)
+	fill.color = fill_color
+	background.add_child(fill)
 
 func _add_touch_button(layer: CanvasLayer, caption: String, offset: Vector2, size: Vector2, action: String, from_right := false) -> void:
 	var button := Button.new()
