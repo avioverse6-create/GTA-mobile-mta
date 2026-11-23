@@ -6,6 +6,13 @@ extends CharacterBody3D
 @export var acceleration := 18.0
 @export var turn_speed := 9.0
 
+var animation_clock := 0.0
+var left_leg: Node3D
+var right_leg: Node3D
+var left_arm: Node3D
+var right_arm: Node3D
+var torso: Node3D
+
 func _ready() -> void:
 	_build_character()
 
@@ -17,31 +24,71 @@ func _physics_process(delta: float) -> void:
 	var direction := Vector3(input_vector.x, 0.0, input_vector.y)
 	if direction.length() > 1.0:
 		direction = direction.normalized()
-	var current_speed := sprint_speed if Input.is_action_pressed("sprint") else move_speed
+	var moving := direction.length() > 0.12
+	var sprinting := Input.is_action_pressed("sprint")
+	var current_speed := sprint_speed if sprinting else move_speed
 	velocity.x = move_toward(velocity.x, direction.x * current_speed, acceleration * delta)
 	velocity.z = move_toward(velocity.z, direction.z * current_speed, acceleration * delta)
 	if is_on_floor() and Input.is_action_just_pressed("jump"):
 		velocity.y = jump_velocity
 	else:
 		velocity.y -= 24.0 * delta
-	if direction.length() > 0.12:
+	if moving:
 		var desired_yaw := atan2(-direction.x, -direction.z)
 		rotation.y = lerp_angle(rotation.y, desired_yaw, 1.0 - exp(-turn_speed * delta))
 	move_and_slide()
+	_update_animation(delta, moving, sprinting)
+
+func _update_animation(delta: float, moving: bool, sprinting: bool) -> void:
+	if not is_instance_valid(left_leg):
+		return
+	if moving and is_on_floor():
+		animation_clock += delta * (12.0 if sprinting else 8.0)
+		var swing := sin(animation_clock) * (0.72 if sprinting else 0.48)
+		left_leg.rotation.x = swing
+		right_leg.rotation.x = -swing
+		left_arm.rotation.x = -swing * 0.72
+		right_arm.rotation.x = swing * 0.72
+	else:
+		animation_clock = 0.0
+		left_leg.rotation.x = move_toward(left_leg.rotation.x, 0.0, delta * 5.0)
+		right_leg.rotation.x = move_toward(right_leg.rotation.x, 0.0, delta * 5.0)
+		left_arm.rotation.x = move_toward(left_arm.rotation.x, 0.0, delta * 5.0)
+		right_arm.rotation.x = move_toward(right_arm.rotation.x, 0.0, delta * 5.0)
+	if is_on_floor():
+		torso.position.y = lerpf(torso.position.y, 1.18 + (0.025 if moving else 0.0), delta * 8.0)
+	else:
+		torso.position.y = 1.18
 
 func _build_character() -> void:
 	var skin := _mat(Color(0.55, 0.34, 0.22))
 	var shirt := _mat(Color(0.08, 0.28, 0.72))
 	var pants := _mat(Color(0.12, 0.14, 0.18))
 	var shoes := _mat(Color(0.025, 0.025, 0.03))
-	_add_capsule("Torso", 0.34, 0.82, Vector3(0, 1.18, 0), shirt)
-	_add_capsule("Head", 0.23, 0.42, Vector3(0, 1.86, 0), skin)
-	_add_box("Left leg", Vector3(0.2, 0.62, 0.24), Vector3(-0.13, 0.48, 0), pants)
-	_add_box("Right leg", Vector3(0.2, 0.62, 0.24), Vector3(0.13, 0.48, 0), pants)
-	_add_box("Left shoe", Vector3(0.22, 0.12, 0.34), Vector3(-0.13, 0.13, -0.06), shoes)
-	_add_box("Right shoe", Vector3(0.22, 0.12, 0.34), Vector3(0.13, 0.13, -0.06), shoes)
-	_add_capsule("Left arm", 0.12, 0.64, Vector3(-0.42, 1.2, 0), skin)
-	_add_capsule("Right arm", 0.12, 0.64, Vector3(0.42, 1.2, 0), skin)
+	torso = Node3D.new()
+	torso.name = "TorsoPivot"
+	torso.position = Vector3(0, 1.18, 0)
+	add_child(torso)
+	_add_capsule(torso, "Torso", 0.34, 0.82, Vector3.ZERO, shirt)
+	_add_capsule(torso, "Neck", 0.12, 0.22, Vector3(0, 0.48, 0), skin)
+	_add_capsule(self, "Head", 0.23, 0.42, Vector3(0, 1.86, 0), skin)
+
+	left_leg = _make_limb("LeftLeg", Vector3(-0.13, 0.78, 0))
+	right_leg = _make_limb("RightLeg", Vector3(0.13, 0.78, 0))
+	add_child(left_leg)
+	add_child(right_leg)
+	_add_box(left_leg, "Left thigh", Vector3(0.2, 0.48, 0.24), Vector3(0, -0.12, 0), pants)
+	_add_box(left_leg, "Left shoe", Vector3(0.22, 0.12, 0.34), Vector3(0, -0.43, -0.06), shoes)
+	_add_box(right_leg, "Right thigh", Vector3(0.2, 0.48, 0.24), Vector3(0, -0.12, 0), pants)
+	_add_box(right_leg, "Right shoe", Vector3(0.22, 0.12, 0.34), Vector3(0, -0.43, -0.06), shoes)
+
+	left_arm = _make_limb("LeftArm", Vector3(-0.42, 1.48, 0))
+	right_arm = _make_limb("RightArm", Vector3(0.42, 1.48, 0))
+	add_child(left_arm)
+	add_child(right_arm)
+	_add_capsule(left_arm, "Left upper arm", 0.12, 0.64, Vector3(0, -0.25, 0), skin)
+	_add_capsule(right_arm, "Right upper arm", 0.12, 0.64, Vector3(0, -0.25, 0), skin)
+
 	var collision := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.38
@@ -50,7 +97,13 @@ func _build_character() -> void:
 	collision.position.y = 0.95
 	add_child(collision)
 
-func _add_capsule(label: String, radius: float, height: float, pos: Vector3, material: Material) -> void:
+func _make_limb(label: String, pos: Vector3) -> Node3D:
+	var pivot := Node3D.new()
+	pivot.name = label
+	pivot.position = pos
+	return pivot
+
+func _add_capsule(parent: Node3D, label: String, radius: float, height: float, pos: Vector3, material: Material) -> void:
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.name = label
 	var mesh := CapsuleMesh.new()
@@ -59,17 +112,17 @@ func _add_capsule(label: String, radius: float, height: float, pos: Vector3, mat
 	mesh_instance.mesh = mesh
 	mesh_instance.material_override = material
 	mesh_instance.position = pos
-	add_child(mesh_instance)
+	parent.add_child(mesh_instance)
 
-func _add_box(label: String, size: Vector3, pos: Vector3, material: Material) -> void:
+func _add_box(parent: Node3D, label: String, box_size: Vector3, pos: Vector3, material: Material) -> void:
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.name = label
 	var mesh := BoxMesh.new()
-	mesh.size = size
+	mesh.size = box_size
 	mesh_instance.mesh = mesh
 	mesh_instance.material_override = material
 	mesh_instance.position = pos
-	add_child(mesh_instance)
+	parent.add_child(mesh_instance)
 
 func _mat(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
