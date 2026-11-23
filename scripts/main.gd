@@ -1,6 +1,6 @@
 extends Node3D
 
-var car: CharacterBody3D
+var car
 var camera: Camera3D
 var speed_label: Label
 
