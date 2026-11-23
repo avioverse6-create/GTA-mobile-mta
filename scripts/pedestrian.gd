@@ -1,7 +1,7 @@
 extends CharacterBody3D
 
 @export var walk_speed := 1.6
-@export var wander_radius := 8.0
+@export var wander_radius := 1.5
 
 var home_position := Vector3.ZERO
 var destination := Vector3.ZERO
@@ -63,8 +63,8 @@ func _build_person() -> void:
 	var shoes := _mat(Color(0.025, 0.025, 0.03))
 	_add_capsule("Body", 0.32, 0.78, Vector3(0, 1.18, 0), shirt)
 	_add_capsule("Head", 0.22, 0.4, Vector3(0, 1.85, 0), skin)
-	left_leg = _pivot("LeftLeg", Vector3(-0.13, 0.78, 0))
-	right_leg = _pivot("RightLeg", Vector3(0.13, 0.78, 0))
+	left_leg = _pivot("LeftLeg", Vector3(-0.13, 0.58, 0))
+	right_leg = _pivot("RightLeg", Vector3(0.13, 0.58, 0))
 	left_arm = _pivot("LeftArm", Vector3(-0.4, 1.48, 0))
 	right_arm = _pivot("RightArm", Vector3(0.4, 1.48, 0))
 	add_child(left_leg)
