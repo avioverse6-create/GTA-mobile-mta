@@ -62,6 +62,8 @@ func _update_animation(delta: float, moving: bool, sprinting: bool) -> void:
 		right_leg.rotation.x = move_toward(right_leg.rotation.x, 0.0, delta * 5.0)
 		left_arm.rotation.x = move_toward(left_arm.rotation.x, 0.0, delta * 5.0)
 		right_arm.rotation.x = move_toward(right_arm.rotation.x, 0.0, delta * 5.0)
+	if recoil_timer > 0.0:
+		right_arm.rotation.x -= 0.28
 	if is_on_floor():
 		torso.position.y = lerpf(torso.position.y, 1.18 + (0.025 if moving else 0.0), delta * 8.0)
 	else:
