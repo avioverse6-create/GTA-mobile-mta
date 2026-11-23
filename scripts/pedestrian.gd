@@ -12,14 +12,41 @@ var right_leg: Node3D
 var left_arm: Node3D
 var right_arm: Node3D
 var body_color := Color(0.2, 0.42, 0.62)
+var health := 100.0
+var is_dead := false
+var death_timer := 0.0
 
 func _ready() -> void:
+	add_to_group("pedestrians")
+	health = 100.0
 	home_position = global_position
 	destination = home_position
 	_build_person()
 	_choose_destination()
 
+func _process(delta: float) -> void:
+	if is_dead:
+		death_timer -= delta
+		if death_timer <= 0.0:
+			queue_free()
+
+func take_damage(amount: float) -> bool:
+	if is_dead:
+		return true
+	health = maxf(0.0, health - amount)
+	if health <= 0.0:
+		is_dead = true
+		death_timer = 2.5
+		set_physics_process(false)
+		collision_layer = 0
+		collision_mask = 0
+		rotation.x = -PI * 0.5
+		return true
+	return false
+
 func _physics_process(delta: float) -> void:
+	if is_dead:
+		return
 	choose_timer -= delta
 	var flat_target := destination - global_position
 	flat_target.y = 0.0
