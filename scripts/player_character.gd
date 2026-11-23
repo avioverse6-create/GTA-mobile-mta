@@ -73,8 +73,8 @@ func _build_character() -> void:
 	_add_capsule(torso, "Neck", 0.12, 0.22, Vector3(0, 0.48, 0), skin)
 	_add_capsule(self, "Head", 0.23, 0.42, Vector3(0, 1.86, 0), skin)
 
-	left_leg = _make_limb("LeftLeg", Vector3(-0.13, 0.78, 0))
-	right_leg = _make_limb("RightLeg", Vector3(0.13, 0.78, 0))
+	left_leg = _make_limb("LeftLeg", Vector3(-0.13, 0.58, 0))
+	right_leg = _make_limb("RightLeg", Vector3(0.13, 0.58, 0))
 	add_child(left_leg)
 	add_child(right_leg)
 	_add_box(left_leg, "Left thigh", Vector3(0.2, 0.48, 0.24), Vector3(0, -0.12, 0), pants)
