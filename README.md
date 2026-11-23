@@ -10,7 +10,9 @@ A Godot 4 mobile-first prototype for an original GTA-style open-world driving ga
 - Touch-only driving controls: on-screen steering, GAS and BRAKE buttons. No keyboard bindings.
 - Touch-only HUD: virtual analog joystick, GAS, BRAKE, ENTER / EXIT, JUMP and RUN buttons. The joystick controls walking and vehicle steering.
 - Third-person character prototype with procedural leg and arm swing for walking and running; use ENTER / EXIT to leave or re-enter the parked car. Walk with the on-screen controls; JUMP and RUN are touch buttons.
-- Eight simple wandering pedestrian NPCs with varied clothing colors and basic walk cycles populate the sidewalks.
+- Eight wandering pedestrian NPCs with varied clothing colors, walk cycles, health and damage/death states.
+- Deagle (Desert Eagle) sidearm with a visible low-poly 3D model, muzzle flash, center-screen crosshair, touch FIRE/RELOAD buttons, magazine/reserve ammo, and raycast hits against pedestrians.
+- City facade windows are batched with MultiMesh to reduce scene nodes and draw-call overhead; mobile-friendly fog and filmic tonemapping add depth without expensive post-processing.
 - Swipe on the open screen area to orbit the third-person camera; touch controls consume their own gestures.
 - No keyboard bindings; mobile touch controls are the primary and only configured control scheme.
 - Mobile renderer selected in project settings with canvas-based UI stretching.
@@ -21,7 +23,7 @@ A Godot 4 mobile-first prototype for an original GTA-style open-world driving ga
 3. Run the project (F6/F5).
 
 ## Android
-The project is configured for the mobile renderer, but an Android APK has not yet been built or device-tested. Android export templates and an Android SDK/JDK setup are required.
+The project includes an automated GitHub Actions Android APK export workflow. A build is only considered ready after the workflow succeeds and produces an APK artifact; the APK still needs device testing.
 
 ## Assets and licensing
 The prototype currently uses procedural original geometry and materials. It does not bundle Rockstar's copyrighted GTA San Andreas models, characters, textures, audio or HUD assets. Those can only be integrated when the required usage rights are available.
