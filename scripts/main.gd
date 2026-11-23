@@ -55,6 +55,12 @@ var camera_yaw := 0.0
 var camera_pitch := 0.28
 var camera_distance := 9.5
 var camera_drag_sensitivity := 0.006
+var magazine_ammo := 7
+var reserve_ammo := 35
+var fire_cooldown := 0.0
+var reload_timer := 0.0
+var ammo_label: Label
+var combat_message: Label
 
 func _ready() -> void:
 	_setup_input()
@@ -68,6 +74,22 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("interact"):
 		_process_interaction()
+	fire_cooldown = maxf(0.0, fire_cooldown - delta)
+	if reload_timer > 0.0:
+		reload_timer -= delta
+		if reload_timer <= 0.0:
+			var needed := 7 - magazine_ammo
+			var loaded := mini(needed, reserve_ammo)
+			magazine_ammo += loaded
+			reserve_ammo -= loaded
+			if combat_message:
+				combat_message.text = "RELOADED"
+	if not in_vehicle and Input.is_action_just_pressed("fire"):
+		_fire_deagle()
+	if not in_vehicle and Input.is_action_just_pressed("reload"):
+		_start_reload()
+	if ammo_label:
+		ammo_label.text = "DEAGLE  %d / %d" % [magazine_ammo, reserve_ammo]
 	if camera:
 		var followed: Node3D = car if in_vehicle else player
 		var target := followed.global_position + Vector3(0, 1.0, 0)
@@ -86,7 +108,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _setup_input() -> void:
 	# Touch-only actions: deliberately create no keyboard bindings.
-	for action in ["accelerate", "brake", "steer_left", "steer_right", "interact", "jump", "sprint"]:
+	for action in ["accelerate", "brake", "steer_left", "steer_right", "interact", "jump", "sprint", "fire", "reload"]:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
 		InputMap.action_erase_events(action)
@@ -104,6 +126,10 @@ func _build_world() -> void:
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.72, 0.78, 0.88)
 	environment.ambient_light_energy = 0.8
+	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	environment.fog_enabled = true
+	environment.fog_light_color = Color(0.58, 0.68, 0.76)
+	environment.fog_density = 0.0035
 	world_env.environment = environment
 	add_child(world_env)
 
@@ -176,18 +202,26 @@ func _build_city() -> void:
 		building.position = Vector3(x, h / 2.0, z)
 		add_child(building)
 
-		# Lit-looking window panels on the street-facing facade.
+		# Batch facade windows into one MultiMesh node per building.
 		var face_z := z + depth * 0.5 + 0.035 if side < 0.0 else z - depth * 0.5 - 0.035
-		for floor_index in range(maxi(1, int(h / 2.4))):
+		var floor_count := maxi(1, int(h / 2.4))
+		var pane := BoxMesh.new()
+		pane.size = Vector3(0.72, 0.9, 0.07)
+		pane.material = _material(Color(0.72, 0.66, 0.42) if i % 4 == 0 else Color(0.075, 0.16, 0.22), 0.08, 0.32)
+		var window_batch := MultiMesh.new()
+		window_batch.transform_format = MultiMesh.TRANSFORM_3D
+		window_batch.mesh = pane
+		window_batch.instance_count = floor_count * 3
+		var instance_index := 0
+		for floor_index in range(floor_count):
 			for window_index in range(3):
-				var window := MeshInstance3D.new()
-				var pane := BoxMesh.new()
-				pane.size = Vector3(0.72, 0.9, 0.07)
-				window.mesh = pane
-				var glow := Color(0.72, 0.66, 0.42) if (i + floor_index + window_index) % 4 == 0 else Color(0.075, 0.16, 0.22)
-				window.material_override = _material(glow, 0.08, 0.32)
-				window.position = Vector3(x - width * 0.28 + float(window_index) * width * 0.28, 1.5 + float(floor_index) * 2.2, face_z)
-				add_child(window)
+				var window_position := Vector3(x - width * 0.28 + float(window_index) * width * 0.28, 1.5 + float(floor_index) * 2.2, face_z)
+				window_batch.set_instance_transform(instance_index, Transform3D(Basis.IDENTITY, window_position - building.position))
+				instance_index += 1
+		var windows := MultiMeshInstance3D.new()
+		windows.multimesh = window_batch
+		windows.position = building.position
+		add_child(windows)
 
 	# Street lights along both curbs.
 	for z in range(-48, 53, 16):
@@ -244,6 +278,39 @@ func _spawn_pedestrians() -> void:
 		var lane_z := -27.0 + float(i) * 7.5
 		pedestrian.position = Vector3(side * 8.2, 0.12, lane_z)
 		add_child(pedestrian)
+
+func _fire_deagle() -> void:
+	if fire_cooldown > 0.0 or reload_timer > 0.0:
+		return
+	if magazine_ammo <= 0:
+		if combat_message:
+			combat_message.text = "EMPTY — RELOAD"
+		return
+	magazine_ammo -= 1
+	fire_cooldown = 0.28
+	if player.has_method("play_fire_animation"):
+		player.play_fire_animation()
+	var ray_start := camera.global_position
+	var ray_end := ray_start + (-camera.global_transform.basis.z * 100.0)
+	var query := PhysicsRayQueryParameters3D.create(ray_start, ray_end)
+	query.exclude = [player.get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty():
+		var target: Object = hit.get("collider")
+		if target is Node and target.is_in_group("pedestrians"):
+			var defeated: bool = target.take_damage(34.0)
+			combat_message.text = "TARGET DOWN" if defeated else "HIT!"
+		else:
+			combat_message.text = "SHOT"
+	else:
+		combat_message.text = "MISS"
+
+func _start_reload() -> void:
+	if reload_timer > 0.0 or magazine_ammo >= 7 or reserve_ammo <= 0:
+		return
+	reload_timer = 1.15
+	if combat_message:
+		combat_message.text = "RELOADING..."
 
 func _process_interaction() -> void:
 	if in_vehicle:
@@ -351,6 +418,50 @@ func _build_hud() -> void:
 	_add_touch_button(layer, "ENTER / EXIT", Vector2(-360, -84), Vector2(118, 58), "interact", true)
 	_add_touch_button(layer, "JUMP", Vector2(-132, -246), Vector2(96, 70), "jump", true)
 	_add_touch_button(layer, "RUN", Vector2(-240, -246), Vector2(88, 70), "sprint", true)
+	_add_touch_button(layer, "FIRE", Vector2(-132, -356), Vector2(100, 76), "fire", true)
+	_add_touch_button(layer, "RELOAD", Vector2(-244, -350), Vector2(100, 64), "reload", true)
+
+	ammo_label = Label.new()
+	ammo_label.text = "DEAGLE  7 / 35"
+	ammo_label.anchor_left = 1.0
+	ammo_label.anchor_right = 1.0
+	ammo_label.offset_left = -310
+	ammo_label.offset_right = -24
+	ammo_label.offset_top = 82
+	ammo_label.offset_bottom = 112
+	ammo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ammo_label.add_theme_font_size_override("font_size", 19)
+	ammo_label.add_theme_color_override("font_color", Color(0.96, 0.86, 0.52))
+	layer.add_child(ammo_label)
+
+	var crosshair := Label.new()
+	crosshair.text = "+"
+	crosshair.anchor_left = 0.5
+	crosshair.anchor_right = 0.5
+	crosshair.anchor_top = 0.5
+	crosshair.anchor_bottom = 0.5
+	crosshair.offset_left = -10
+	crosshair.offset_right = 10
+	crosshair.offset_top = -18
+	crosshair.offset_bottom = 18
+	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	crosshair.add_theme_font_size_override("font_size", 30)
+	crosshair.add_theme_color_override("font_color", Color(1.0, 0.93, 0.72, 0.9))
+	layer.add_child(crosshair)
+
+	combat_message = Label.new()
+	combat_message.anchor_left = 0.5
+	combat_message.anchor_right = 0.5
+	combat_message.anchor_top = 0.64
+	combat_message.anchor_bottom = 0.64
+	combat_message.offset_left = -150
+	combat_message.offset_right = 150
+	combat_message.offset_top = 0
+	combat_message.offset_bottom = 28
+	combat_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	combat_message.add_theme_font_size_override("font_size", 20)
+	combat_message.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
+	layer.add_child(combat_message)
 
 	var hint := Label.new()
 	hint.text = "LEFT: MOVE  •  DRAG: CAMERA"
